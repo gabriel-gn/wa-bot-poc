@@ -2,7 +2,6 @@
 /dist
 /node_modules
 /.idea
-
 # Logs
 logs
 *.log
@@ -11,16 +10,13 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
-
 # OS
 .DS_Store
 temp/
 tmp/
-
 # Tests
 /coverage
 /.nyc_output
-
 # IDEs and editors
 /.idea
 .project
@@ -29,13 +25,17 @@ tmp/
 *.launch
 .settings/
 *.sublime-workspace
-
 # IDE - VSCode
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
-
 .vercel
 **COVID_HELPER**
+
+# managed by open-wa
+**.data.json
+**.node-persist**
+**_IGNORE_**
+# end managed by open-wa

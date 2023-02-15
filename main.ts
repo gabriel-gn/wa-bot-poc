@@ -2,7 +2,22 @@ import {create, Client, decryptMedia, ev, NotificationLanguage, MessageId} from 
 import {ConfigObject} from "@open-wa/wa-automate/dist/api/model";
 import {Message} from "@open-wa/wa-automate/dist/api/model/message";
 import {Chat} from "@open-wa/wa-automate/dist/api/model/chat";
-import {catchError, concatMap, delay, first, from, isObservable, map, Observable, of, take, throwError} from "rxjs";
+import {
+    catchError,
+    concatMap,
+    delay,
+    first,
+    from,
+    isObservable,
+    map,
+    tap,
+    Observable,
+    of,
+    take,
+    throwError,
+    combineLatest, forkJoin, combineAll
+} from "rxjs";
+import {StickerMetadata} from "@open-wa/wa-automate/dist/api/model/media";
 
 const launchConfig: ConfigObject = {
     // https://openwa.dev/docs/api/interfaces/api_model_config.ConfigObject
@@ -19,7 +34,8 @@ const launchConfig: ConfigObject = {
 };
 
 function messageToFig(client: Client, message: Message): Observable<any> | null {
-    if (`${message.type}`.toLowerCase() !== 'video') { return null }
+    const availableMessageTypes = ['video', 'image'];
+    if (availableMessageTypes.includes(`${message.type}`.toLowerCase()) === false) { return null }
 
     const selfChatId = '<my_number>@c.us';
     let selfChat: Chat;
@@ -37,12 +53,24 @@ function messageToFig(client: Client, message: Message): Observable<any> | null 
                 return from(client.react(message.id, "🔄"));
             }),
             concatMap(async () => {
-                if (message.mimetype === 'video/mp4') {
+                const stickerMetadata: StickerMetadata = {
+                    author: `${message.from.substring(0, message.from.indexOf('@'))}`,
+                    pack: `GGN Sticker Bot`,
+                    removebg: false,
+                };
+                if (`${message.type}`.toLowerCase() === 'video') {
                     const mediaData = await decryptMedia(message);
                     const videoBase64 = `data:${message.mimetype};base64,${mediaData.toString('base64')}`;
-                    return from(client.sendMp4AsSticker(message.from, videoBase64));
+                    return from(client.sendMp4AsSticker(message.from, videoBase64, {}, stickerMetadata));
+                } else if (`${message.type}`.toLowerCase() === 'image') {
+                    const mediaData = await decryptMedia(message);
+                    const imageBase64 = `data:${message.mimetype};base64,${mediaData.toString('base64')}`;
+                    return forkJoin({
+                        sticker: from(client.sendImageAsSticker(message.from, imageBase64, stickerMetadata)),
+                        stickerNoBg: from(client.sendImageAsSticker(message.from, imageBase64, {...stickerMetadata, removebg: true})),
+                    });
                 } else {
-                    return of('');
+                     return of('');
                 }
             }),
             concatMap(selfMessages => {
@@ -64,6 +92,7 @@ function proccessMessage(messageObservable: any): void {
 }
 
 function start(client: Client) {
+    // proccessMessage(messageToFig(client, 'message' as unknown as Message));
     client.onMessage(async (message: Message) => {
         if (`${message.caption}`.toLowerCase() === 'fig') {
             const msgObs = messageToFig(client, message);
