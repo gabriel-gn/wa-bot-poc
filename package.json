@@ -4,6 +4,8 @@
   },
   "dependencies": {
     "@open-wa/wa-automate": "^4.55.4",
+    "@types/lodash": "^4.14.191",
+    "lodash": "^4.17.21",
     "rxjs": "^7.8.0",
     "ts-node": "^10.9.1"
   }

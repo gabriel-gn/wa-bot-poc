@@ -15,9 +15,11 @@ import {
     of,
     take,
     throwError,
-    combineLatest, forkJoin, combineAll
+    forkJoin
 } from "rxjs";
 import {StickerMetadata} from "@open-wa/wa-automate/dist/api/model/media";
+import {ChatId, ContactId} from "@open-wa/wa-automate/dist/api/model/aliases";
+import * as _ from 'lodash'
 
 const launchConfig: ConfigObject = {
     // https://openwa.dev/docs/api/interfaces/api_model_config.ConfigObject
@@ -33,22 +35,34 @@ const launchConfig: ConfigObject = {
     qrTimeout: 0, // This determines how long the process should wait for a QR code to be scanned before killing the process entirely. To have the system wait continuously, set this to 0.
 };
 
-function messageToFig(client: Client, message: Message): Observable<any> | null {
-    const availableMessageTypes = ['video', 'image'];
-    if (availableMessageTypes.includes(`${message.type}`.toLowerCase()) === false) { return null }
+function getChatMessage(client: Client, chatId: ChatId, messageIndex: number = 0): Observable<Message> {
+    return of('').pipe(
+        concatMap(() => {
+            return from(client.loadEarlierMessagesTillDate(chatId as ContactId, Math.floor(+(new Date()) / 1000) - (60 * 60 * 24 * 30)))
+                .pipe(
+                    concatMap(() => {
+                        return from(client.getAllMessagesInChat(chatId, true, true))
+                    }),
+                );
+        }),
+        map(chatMessages => {
+            const messageToGet = _.reverse(chatMessages)[messageIndex];
+            return messageToGet;
+        }),
+    ) as unknown as Observable<Message>;
+}
 
-    const selfChatId = '<my_number>@c.us';
-    let selfChat: Chat;
+function messageToFig(client: Client, message: Message): Observable<any> | Observable<never> {
+    const availableMessageTypes = ['video', 'image'];
+    if (availableMessageTypes.includes(`${message.type}`.toLowerCase()) === false) {
+        return of('')
+            .pipe(
+                tap(() => {console.error({error: 'not valid message type'})}),
+            );
+    }
+
     return of('')
         .pipe(
-            // concatMap(() => {
-            //     return from(client.getAllChats(false));
-            // }),
-            // concatMap((allChats: Chat[]) => {
-            //     selfChat = allChats.find(chat => chat.id === selfChatId) as Chat;
-            //     return from(client.getAllMessagesInChat(selfChatId, true, false));
-            // }),
-            // tap(selfMessages => { message = selfMessages[0]; }),
             concatMap(() => {
                 return from(client.react(message.id, "🔄"));
             }),
@@ -92,7 +106,16 @@ function proccessMessage(messageObservable: any): void {
 }
 
 function start(client: Client) {
-    // proccessMessage(messageToFig(client, 'message' as unknown as Message));
+    // proccessMessage(getChatMessage(client, '<mynumber>>@c.us', 0) // ALTERAR NUMERO E MENSAGEM INDEX INVERSO PARA TESTAR MÉTODOS
+    //     .pipe(
+    //         concatMap((message) => {
+    //             return messageToFig(client, message)
+    //         }),
+    //         catchError(error => {
+    //             return throwError(error);
+    //         })
+    //     )
+    // );
     client.onMessage(async (message: Message) => {
         if (`${message.caption}`.toLowerCase() === 'fig') {
             const msgObs = messageToFig(client, message);
