@@ -1,25 +1,25 @@
-import {create, Client, decryptMedia, ev, NotificationLanguage, MessageId} from '@open-wa/wa-automate';
+import {Client, create, decryptMedia, MessageId, MessageTypes, NotificationLanguage} from '@open-wa/wa-automate';
 import {ConfigObject} from "@open-wa/wa-automate/dist/api/model";
 import {Message} from "@open-wa/wa-automate/dist/api/model/message";
-import {Chat} from "@open-wa/wa-automate/dist/api/model/chat";
 import {
     catchError,
     concatMap,
-    delay,
-    first,
+    forkJoin,
     from,
     isObservable,
     map,
-    tap,
+    NEVER,
     Observable,
     of,
     take,
-    throwError,
-    forkJoin
+    tap,
+    throwError
 } from "rxjs";
 import {StickerMetadata} from "@open-wa/wa-automate/dist/api/model/media";
 import {ChatId, ContactId} from "@open-wa/wa-automate/dist/api/model/aliases";
 import * as _ from 'lodash'
+
+const botPhoneNumber = 'CCAAXXXXXXXXX'
 
 const launchConfig: ConfigObject = {
     // https://openwa.dev/docs/api/interfaces/api_model_config.ConfigObject
@@ -52,9 +52,13 @@ function getChatMessage(client: Client, chatId: ChatId, messageIndex: number = 0
     ) as unknown as Observable<Message>;
 }
 
-function messageToFig(client: Client, message: Message): Observable<any> | Observable<never> {
-    const availableMessageTypes = ['video', 'image'];
-    if (availableMessageTypes.includes(`${message.type}`.toLowerCase()) === false) {
+function messageToFig(client: Client, message: Message, enableQuotedMessage: boolean = true): Observable<any> | Observable<never> {
+    if (enableQuotedMessage && message?.hasOwnProperty('quotedMsg')) {
+        message = message.quotedMsg as Message;
+    }
+
+    const availableMessageTypes = [MessageTypes.VIDEO, MessageTypes.IMAGE];
+    if (availableMessageTypes.includes(message.type) === false) {
         return of('')
             .pipe(
                 tap(() => {console.error({error: 'not valid message type'})}),
@@ -68,20 +72,24 @@ function messageToFig(client: Client, message: Message): Observable<any> | Obser
             }),
             concatMap(async () => {
                 const stickerMetadata: StickerMetadata = {
-                    author: `${message.from.substring(0, message.from.indexOf('@'))}`,
+                    // author: `${message.from.substring(0, message.from.indexOf('@'))}`,
+                    author: `GGN`,
                     pack: `GGN Sticker Bot`,
                     removebg: false,
                 };
-                if (`${message.type}`.toLowerCase() === 'video') {
+                const chatToSend = message.chatId;
+                if (message.type === MessageTypes.VIDEO) {
+                    // @ts-ignore
                     const mediaData = await decryptMedia(message);
                     const videoBase64 = `data:${message.mimetype};base64,${mediaData.toString('base64')}`;
-                    return from(client.sendMp4AsSticker(message.from, videoBase64, {}, stickerMetadata));
-                } else if (`${message.type}`.toLowerCase() === 'image') {
+                    return from(client.sendMp4AsSticker(chatToSend, videoBase64, {}, stickerMetadata));
+                } else if (message.type === MessageTypes.IMAGE) {
+                    // @ts-ignore
                     const mediaData = await decryptMedia(message);
                     const imageBase64 = `data:${message.mimetype};base64,${mediaData.toString('base64')}`;
                     return forkJoin({
-                        sticker: from(client.sendImageAsSticker(message.from, imageBase64, stickerMetadata)),
-                        stickerNoBg: from(client.sendImageAsSticker(message.from, imageBase64, {...stickerMetadata, removebg: true})),
+                        sticker: from(client.sendImageAsSticker(chatToSend, imageBase64, stickerMetadata)),
+                        stickerNoBg: from(client.sendImageAsSticker(chatToSend, imageBase64, {...stickerMetadata, removebg: true})),
                     });
                 } else {
                      return of('');
@@ -105,19 +113,39 @@ function proccessMessage(messageObservable: any): void {
     }
 }
 
+function verifySelfchat(client: Client): void {
+    let currentMessageId: MessageId;
+    setInterval(() => {
+        getChatMessage(client, `${botPhoneNumber}@c.us` as ChatId, 0) // ALTERAR NUMERO E MENSAGEM INDEX INVERSO PARA TESTAR MÉTODOS
+            .pipe(
+                take(1),
+                concatMap((message: Message) => {
+                    if (message.id !== currentMessageId) {
+                        currentMessageId = message.id;
+                        console.log(message);
+                        // return messageToFig(client, message) // FAZER PERIPÉCIAS COM AS FIGURINHAS
+                        return NEVER;
+                    } else {
+                        return NEVER;
+                    }
+                }),
+                catchError(error => {
+                    return throwError(error);
+                })
+            )
+        .subscribe();
+    }, 5000);
+}
+
 function start(client: Client) {
-    // proccessMessage(getChatMessage(client, '<mynumber>>@c.us', 0) // ALTERAR NUMERO E MENSAGEM INDEX INVERSO PARA TESTAR MÉTODOS
-    //     .pipe(
-    //         concatMap((message) => {
-    //             return messageToFig(client, message)
-    //         }),
-    //         catchError(error => {
-    //             return throwError(error);
-    //         })
-    //     )
-    // );
+    // verifySelfchat(client); // ta bugado
     client.onMessage(async (message: Message) => {
-        if (`${message.caption}`.toLowerCase() === 'fig') {
+        if (`${message?.caption}`.toLowerCase() === 'fig') {
+            const msgObs = messageToFig(client, message);
+            proccessMessage(msgObs);
+        }
+
+        else if (`${message?.text}`.toLowerCase() === 'fig') {
             const msgObs = messageToFig(client, message);
             proccessMessage(msgObs);
         }
