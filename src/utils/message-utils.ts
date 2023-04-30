@@ -7,7 +7,8 @@ import * as _ from "lodash";
 export function proccessMessage(
     waClient: Client,
     message$: Observable<Message> | Message,
-    messageFunction: (messageObj: Message) => Observable<any>
+    messageFunction: (...args: any[]) => Observable<any>,
+    aditionalArgs: any[] = []
 ): void {
     if (isObservable(message$) === false) {
         message$ = of(message$) as Observable<Message>;
@@ -17,7 +18,7 @@ export function proccessMessage(
         concatMap((message: Message) => {
             return of('').pipe(
                 concatMap(() => from(waClient.react(message?.id, "🔄"))),
-                concatMap(() => messageFunction(message)),
+                concatMap(() => messageFunction(message, ...aditionalArgs)),
                 concatMap(() => from(waClient.react(message?.id, "✅"))),
                 catchError(error => { return from(waClient.react(message.id, "❌")); }),
             )
