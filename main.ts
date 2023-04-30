@@ -2,10 +2,10 @@ import {Client, create, decryptMedia, MessageId, MessageTypes, NotificationLangu
 import {ConfigObject} from "@open-wa/wa-automate/dist/api/model";
 import {Message} from "@open-wa/wa-automate/dist/api/model/message";
 import {
-    catchError,
-    concatMap,
+    catchError, concat,
+    concatMap, delay, first,
     forkJoin,
-    from,
+    from, interval,
     isObservable,
     map,
     NEVER,
@@ -13,13 +13,14 @@ import {
     of,
     take,
     tap,
-    throwError
+    throwError, toArray
 } from "rxjs";
 import {StickerMetadata} from "@open-wa/wa-automate/dist/api/model/media";
 import {ChatId, ContactId} from "@open-wa/wa-automate/dist/api/model/aliases";
 import * as _ from 'lodash'
 
 const botPhoneNumber = 'CCAAXXXXXXXXX'
+let waClient: Client;
 
 const launchConfig: ConfigObject = {
     // https://openwa.dev/docs/api/interfaces/api_model_config.ConfigObject
@@ -35,13 +36,14 @@ const launchConfig: ConfigObject = {
     qrTimeout: 0, // This determines how long the process should wait for a QR code to be scanned before killing the process entirely. To have the system wait continuously, set this to 0.
 };
 
-function getChatMessage(client: Client, chatId: ChatId, messageIndex: number = 0): Observable<Message> {
+function getChatMessage(chatId: ChatId, messageIndex: number = 0): Observable<Message> {
     return of('').pipe(
         concatMap(() => {
-            return from(client.loadEarlierMessagesTillDate(chatId as ContactId, Math.floor(+(new Date()) / 1000) - (60 * 60 * 24 * 30)))
+            // return from(waClient.loadEarlierMessagesTillDate(chatId as ContactId, Math.floor(+(new Date()) / 1000) - (60 * 60 * 24 * 30)))
+            return from(waClient.loadAllEarlierMessages(chatId as ContactId))
                 .pipe(
                     concatMap(() => {
-                        return from(client.getAllMessagesInChat(chatId, true, true))
+                        return from(waClient.getAllMessagesInChat(chatId, true, true))
                     }),
                 );
         }),
@@ -52,7 +54,7 @@ function getChatMessage(client: Client, chatId: ChatId, messageIndex: number = 0
     ) as unknown as Observable<Message>;
 }
 
-function messageToFig(client: Client, message: Message, enableQuotedMessage: boolean = true): Observable<any> | Observable<never> {
+function messageToFig(message: Message, enableQuotedMessage: boolean = true): Observable<any> | Observable<never> {
     if (enableQuotedMessage && message?.hasOwnProperty('quotedMsg')) {
         message = message.quotedMsg as Message;
     }
@@ -67,9 +69,6 @@ function messageToFig(client: Client, message: Message, enableQuotedMessage: boo
 
     return of('')
         .pipe(
-            concatMap(() => {
-                return from(client.react(message.id, "🔄"));
-            }),
             concatMap(async () => {
                 const stickerMetadata: StickerMetadata = {
                     // author: `${message.from.substring(0, message.from.indexOf('@'))}`,
@@ -82,75 +81,86 @@ function messageToFig(client: Client, message: Message, enableQuotedMessage: boo
                     // @ts-ignore
                     const mediaData = await decryptMedia(message);
                     const videoBase64 = `data:${message.mimetype};base64,${mediaData.toString('base64')}`;
-                    return from(client.sendMp4AsSticker(chatToSend, videoBase64, {}, stickerMetadata));
+                    return from(waClient.sendMp4AsSticker(chatToSend, videoBase64, {}, stickerMetadata));
                 } else if (message.type === MessageTypes.IMAGE) {
                     // @ts-ignore
                     const mediaData = await decryptMedia(message);
                     const imageBase64 = `data:${message.mimetype};base64,${mediaData.toString('base64')}`;
                     return forkJoin({
-                        sticker: from(client.sendImageAsSticker(chatToSend, imageBase64, stickerMetadata)),
-                        stickerNoBg: from(client.sendImageAsSticker(chatToSend, imageBase64, {...stickerMetadata, removebg: true})),
+                        sticker: from(waClient.sendImageAsSticker(chatToSend, imageBase64, stickerMetadata)),
+                        stickerNoBg: from(waClient.sendImageAsSticker(chatToSend, imageBase64, {...stickerMetadata, removebg: true})),
                     });
                 } else {
-                     return of('');
+                    return of('');
                 }
             }),
-            concatMap(selfMessages => {
-                return from(client.react(message.id, "✅"));
-            }),
             // concatMap(selfMessages => {
-            //     return from(client.reply(selfChat.id, 'Aopaaa', latestMessage.id, true));
+            //     return from(waClient.reply(selfChat.id, 'Aopaaa', latestMessage.id, true));
             // }),
             catchError(error => {
-                return from(client.react(message.id, "❌"));
+                return from(waClient.react(message.id, "❌"));
             })
         );
 }
 
 function proccessMessage(messageObservable: any): void {
     if (isObservable(messageObservable)) {
-        messageObservable.pipe(take(1)).subscribe();
+        (messageObservable as Observable<any>).pipe(
+            concatMap((message: Message) => {
+                // if (!message?.mId) { return throwError({error: 'error'}) }
+
+                const observableSequence: Observable<any>[] = [
+                    from(waClient.react(message?.id, "🔄")),
+                    from(waClient.react(message?.id, "✅")),
+                ]
+
+                return concat(observableSequence).pipe(toArray())
+            }),
+        ).subscribe();
     }
 }
 
-function verifySelfchat(client: Client): void {
-    let currentMessageId: MessageId;
+let currentMessageId: any;
+function checkLatestSelfChatMessage<T>(): void {
     setInterval(() => {
-        getChatMessage(client, `${botPhoneNumber}@c.us` as ChatId, 0) // ALTERAR NUMERO E MENSAGEM INDEX INVERSO PARA TESTAR MÉTODOS
-            .pipe(
-                take(1),
-                concatMap((message: Message) => {
-                    if (message.id !== currentMessageId) {
-                        currentMessageId = message.id;
-                        console.log(message);
-                        // return messageToFig(client, message) // FAZER PERIPÉCIAS COM AS FIGURINHAS
-                        return NEVER;
-                    } else {
-                        return NEVER;
-                    }
-                }),
-                catchError(error => {
-                    return throwError(error);
-                })
-            )
-        .subscribe();
+        const lastMsgObs$ = getChatMessage(`${botPhoneNumber}@c.us` as ChatId, 0);
+        // const lastMsgObs$ = from(waClient.getMyLastMessage()) as Observable<Message>;
+        lastMsgObs$.subscribe((message: Message) => {
+            // if (message?.mId && message?.mId !== currentMessageId) {
+                // console.log('Result:', message);
+                console.log('Result:', message?.mId, message?.text);
+                currentMessageId = message?.mId;
+                messageProccessing(message);
+            // }
+        });
     }, 5000);
 }
 
-function start(client: Client) {
-    // verifySelfchat(client); // ta bugado
-    client.onMessage(async (message: Message) => {
-        if (`${message?.caption}`.toLowerCase() === 'fig') {
-            const msgObs = messageToFig(client, message);
-            proccessMessage(msgObs);
-        }
+function findAllUrlsInString(str: string): string[] {
+    const regex = /(https?:\/\/[\w\-_]+(\.[\w\-_]+)+([\w\-\.,@?^=%&amp;:/~\+#]*[\w\-\@?^=%&amp;/~\+#])?)/gi;
+    const urls = str.match(regex) ?? [];
+    return urls;
+}
 
-        else if (`${message?.text}`.toLowerCase() === 'fig') {
-            const msgObs = messageToFig(client, message);
-            proccessMessage(msgObs);
-        }
+function messageProccessing(message: Message) {
+    const urlsInString = findAllUrlsInString(`${message?.text}`);
+
+    if (urlsInString.length > 0) {
+        console.log(urlsInString);
+    } else if (`${message?.text}`.toLowerCase() === 'fig') {
+        const msgObs = messageToFig(message);
+        proccessMessage(msgObs);
+    }
+}
+
+function start() {
+    checkLatestSelfChatMessage();
+    waClient.onMessage(async (message: Message) => {
+        messageProccessing(message);
     });
 }
 
-create(launchConfig).then((client: Client) => start(client));
-
+create(launchConfig).then((client: Client) => {
+    waClient = client;
+    start();
+});
