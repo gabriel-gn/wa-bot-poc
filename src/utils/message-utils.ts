@@ -18,7 +18,7 @@ export function proccessMessage(
         concatMap((message: Message) => {
             return of('').pipe(
                 concatMap(() => from(waClient.react(message?.id, "🔄"))),
-                concatMap(() => messageFunction(message, ...aditionalArgs)),
+                concatMap(() => messageFunction(waClient, message, ...aditionalArgs)),
                 concatMap(() => from(waClient.react(message?.id, "✅"))),
                 catchError(error => { return from(waClient.react(message.id, "❌")); }),
             )

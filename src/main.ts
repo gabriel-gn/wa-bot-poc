@@ -7,6 +7,7 @@ import {findAllUrlsInString} from "./utils/urls-utils";
 import {getChatMessage, proccessMessage} from "./utils/message-utils";
 import {passeiDiretoUrlDownload} from "./message-processors/passei-direto-downloader";
 import {Observable} from "rxjs";
+import {urlProcessors} from "./message.routing";
 
 const botPhoneNumber = 'CCDDXXXXXXXXX';
 let waClient: Client;
@@ -41,21 +42,6 @@ function checkLatestSelfChatMessage(): void {
         });
     }, 7500);
 }
-
-const urlProcessors: {
-        msgFunc: (...args: any[]) => Observable<any>,
-        textEquals?: string,
-        urlIncludes?: string,
-    }[] = [
-    {
-        textEquals: 'fig',
-        msgFunc: (m: Message) => messageToFig(waClient, m),
-    },
-    {
-        urlIncludes: 'www.passeidireto.com',
-        msgFunc: (m: Message, url: string) => passeiDiretoUrlDownload(waClient, m, url)
-    },
-]
 
 function messageProccessing(message: Message) {
     const urlsInString = findAllUrlsInString(`${message?.text}`);
