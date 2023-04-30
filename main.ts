@@ -97,43 +97,43 @@ function messageToFig(message: Message, enableQuotedMessage: boolean = true): Ob
             // concatMap(selfMessages => {
             //     return from(waClient.reply(selfChat.id, 'Aopaaa', latestMessage.id, true));
             // }),
-            catchError(error => {
-                return from(waClient.react(message.id, "❌"));
-            })
         );
 }
 
-function proccessMessage(messageObservable: any): void {
-    if (isObservable(messageObservable)) {
-        (messageObservable as Observable<any>).pipe(
-            concatMap((message: Message) => {
-                // if (!message?.mId) { return throwError({error: 'error'}) }
-
-                const observableSequence: Observable<any>[] = [
-                    from(waClient.react(message?.id, "🔄")),
-                    from(waClient.react(message?.id, "✅")),
-                ]
-
-                return concat(observableSequence).pipe(toArray())
-            }),
-        ).subscribe();
+function proccessMessage(
+    message$: Observable<Message> | Message,
+    messageFunction: (messageObj: Message) => Observable<any>
+): void {
+    if (isObservable(message$) === false) {
+        message$ = of(message$) as Observable<Message>;
     }
+
+    (message$ as Observable<Message>).pipe(
+        concatMap((message: Message) => {
+            return of('').pipe(
+                concatMap(() => from(waClient.react(message?.id, "🔄"))),
+                concatMap(() => messageFunction(message)),
+                concatMap(() => from(waClient.react(message?.id, "✅"))),
+                catchError(error => { return from(waClient.react(message.id, "❌")); }),
+            )
+        }),
+    ).subscribe();
 }
 
 let currentMessageId: any;
-function checkLatestSelfChatMessage<T>(): void {
+function checkLatestSelfChatMessage(): void {
     setInterval(() => {
         const lastMsgObs$ = getChatMessage(`${botPhoneNumber}@c.us` as ChatId, 0);
         // const lastMsgObs$ = from(waClient.getMyLastMessage()) as Observable<Message>;
         lastMsgObs$.subscribe((message: Message) => {
             // if (message?.mId && message?.mId !== currentMessageId) {
                 // console.log('Result:', message);
-                console.log('Result:', message?.mId, message?.text);
+                console.log('Message:', message?.mId, message?.text);
                 currentMessageId = message?.mId;
                 messageProccessing(message);
             // }
         });
-    }, 5000);
+    }, 7500);
 }
 
 function findAllUrlsInString(str: string): string[] {
@@ -146,10 +146,13 @@ function messageProccessing(message: Message) {
     const urlsInString = findAllUrlsInString(`${message?.text}`);
 
     if (urlsInString.length > 0) {
+        const msgFunc = (m: Message) => of(m).pipe(
+            concatMap(() => { return from(waClient.reply(m.chatId, `suas urls: ${urlsInString}`, m.id, true)) })
+        )
+        proccessMessage(message, m => msgFunc(m));
         console.log(urlsInString);
     } else if (`${message?.text}`.toLowerCase() === 'fig') {
-        const msgObs = messageToFig(message);
-        proccessMessage(msgObs);
+        proccessMessage(message, m => messageToFig(m));
     }
 }
 
