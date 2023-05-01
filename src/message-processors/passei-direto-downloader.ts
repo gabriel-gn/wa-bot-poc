@@ -1,6 +1,6 @@
 import {Client} from "@open-wa/wa-automate";
 import {Message} from "@open-wa/wa-automate/dist/api/model/message";
-import {delay, from, Observable} from "rxjs";
+import {from, Observable} from "rxjs";
 
 export function passeiDiretoUrlDownload(waClient: Client, message: Message, url: string, enableQuotedMessage: boolean = false): Observable<any> | Observable<never> {
     if (enableQuotedMessage && message?.hasOwnProperty('quotedMsg')) {

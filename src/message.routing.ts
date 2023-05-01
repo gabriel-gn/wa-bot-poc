@@ -8,6 +8,7 @@ import {helpMenu} from "./message-processors/help-menu";
 export const msgProcessors: {
     msgFunc: (...args: any[]) => Observable<any>,
     description: string,
+    textIncludes?: string,
     textEquals?: string,
     urlIncludes?: string,
 }[] = [

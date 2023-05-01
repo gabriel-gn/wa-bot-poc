@@ -43,11 +43,17 @@ function checkLatestSelfChatMessage(): void {
 function messageProccessing(message: Message) {
     const urlsInString = findAllUrlsInString(`${message?.text}`);
     const messageText = `${message?.text}`;
+    const lowerCaseText = messageText.toLowerCase();
 
     if (urlsInString.length > 0) {
         const processors = msgProcessors.filter(p => p.hasOwnProperty('urlIncludes'));
 
         processors.forEach(p => {
+            // caso a mensagem com url não possua o trecho "textIncludes", a url não é processada por esse processador
+            if (!!(p?.textIncludes && lowerCaseText.includes(p.textIncludes) === true) === false) {
+                return;
+            }
+
             urlsInString.forEach((url: string) => {
                 if (url.includes(`${p?.urlIncludes}`)) {
                     proccessMessage(waClient, message, p.msgFunc, [url]);
@@ -56,9 +62,10 @@ function messageProccessing(message: Message) {
         })
     } else if (message?.text) {
         const processors = msgProcessors.filter(p => p.hasOwnProperty('textEquals'));
-        const text = messageText.toLowerCase();
         processors.forEach(p => {
-            if (text === p.textEquals) {
+            if (p?.textEquals && lowerCaseText === p.textEquals) {
+                proccessMessage(waClient, message, p.msgFunc);
+            } else if (p?.textIncludes && lowerCaseText.includes(p.textIncludes) === true) {
                 proccessMessage(waClient, message, p.msgFunc);
             }
         })
