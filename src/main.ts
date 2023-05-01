@@ -7,7 +7,6 @@ import {getChatMessage, proccessMessage} from "./utils/message-utils";
 import {msgProcessors} from "./message.routing";
 import config from "./config";
 
-const botPhoneNumber = '5516981318849';
 let waClient: Client;
 
 const launchConfig: ConfigObject = {
