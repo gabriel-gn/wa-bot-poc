@@ -4,7 +4,7 @@ import {messageToFig} from "./message-processors/sticker-generator";
 import {passeiDiretoUrlDownload} from "./message-processors/passei-direto-downloader";
 import {Client} from "@open-wa/wa-automate";
 
-export const urlProcessors: {
+export const msgProcessors: {
     msgFunc: (...args: any[]) => Observable<any>,
     textEquals?: string,
     urlIncludes?: string,

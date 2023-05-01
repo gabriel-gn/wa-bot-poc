@@ -2,14 +2,12 @@ import {Client, create, NotificationLanguage} from '@open-wa/wa-automate';
 import {ConfigObject} from "@open-wa/wa-automate/dist/api/model";
 import {Message} from "@open-wa/wa-automate/dist/api/model/message";
 import {ChatId} from "@open-wa/wa-automate/dist/api/model/aliases";
-import {messageToFig} from "./message-processors/sticker-generator";
 import {findAllUrlsInString} from "./utils/urls-utils";
 import {getChatMessage, proccessMessage} from "./utils/message-utils";
-import {passeiDiretoUrlDownload} from "./message-processors/passei-direto-downloader";
-import {Observable} from "rxjs";
-import {urlProcessors} from "./message.routing";
+import {msgProcessors} from "./message.routing";
+import config from "./config";
 
-const botPhoneNumber = 'CCDDXXXXXXXXX';
+const botPhoneNumber = '5516981318849';
 let waClient: Client;
 
 const launchConfig: ConfigObject = {
@@ -30,7 +28,7 @@ let currentMessageId: any;
 
 function checkLatestSelfChatMessage(): void {
     setInterval(() => {
-        const lastMsgObs$ = getChatMessage(waClient, `${botPhoneNumber}@c.us` as ChatId, 0);
+        const lastMsgObs$ = getChatMessage(waClient, `${config.botPhoneNumber}@c.us` as ChatId, 0);
         // const lastMsgObs$ = from(waClient.getMyLastMessage()) as Observable<Message>;
         lastMsgObs$.subscribe((message: Message) => {
             // if (message?.mId && message?.mId !== currentMessageId) {
@@ -48,7 +46,7 @@ function messageProccessing(message: Message) {
     const messageText = `${message?.text}`;
 
     if (urlsInString.length > 0) {
-        const processors = urlProcessors.filter(p => p.hasOwnProperty('urlIncludes'));
+        const processors = msgProcessors.filter(p => p.hasOwnProperty('urlIncludes'));
 
         processors.forEach(p => {
             urlsInString.forEach((url: string) => {
@@ -58,22 +56,22 @@ function messageProccessing(message: Message) {
             })
         })
     } else if (message?.text) {
-        const processors = urlProcessors.filter(p => p.hasOwnProperty('textEquals'));
+        const processors = msgProcessors.filter(p => p.hasOwnProperty('textEquals'));
         const text = messageText.toLowerCase();
         processors.forEach(p => {
             if (text === p.textEquals) {
-               proccessMessage(waClient, message, p.msgFunc);
+                proccessMessage(waClient, message, p.msgFunc);
             }
         })
     }
 }
 
 function start() {
-    // checkLatestSelfChatMessage();
+    checkLatestSelfChatMessage();
 
-    waClient.onMessage(async (message: Message) => {
-        messageProccessing(message);
-    });
+    // waClient.onMessage(async (message: Message) => {
+    //     messageProccessing(message);
+    // });
 }
 
 create(launchConfig).then((client: Client) => {

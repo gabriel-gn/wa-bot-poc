@@ -12,7 +12,9 @@ export function messageToFig(waClient: Client, message: Message, enableQuotedMes
     if (availableMessageTypes.includes(message.type) === false) {
         return of('')
             .pipe(
-                tap(() => {console.error({error: 'not valid message type'})}),
+                tap(() => {
+                    console.error({error: 'not valid message type'})
+                }),
             );
     }
 
@@ -37,7 +39,10 @@ export function messageToFig(waClient: Client, message: Message, enableQuotedMes
                     const imageBase64 = `data:${message.mimetype};base64,${mediaData.toString('base64')}`;
                     return forkJoin({
                         sticker: from(waClient.sendImageAsSticker(chatToSend, imageBase64, stickerMetadata)),
-                        stickerNoBg: from(waClient.sendImageAsSticker(chatToSend, imageBase64, {...stickerMetadata, removebg: true})),
+                        stickerNoBg: from(waClient.sendImageAsSticker(chatToSend, imageBase64, {
+                            ...stickerMetadata,
+                            removebg: true
+                        })),
                     });
                 } else {
                     return of('');
