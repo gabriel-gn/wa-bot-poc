@@ -66,11 +66,10 @@ function messageProccessing(message: Message) {
 }
 
 function start() {
-    checkLatestSelfChatMessage();
-
-    // waClient.onMessage(async (message: Message) => {
-    //     messageProccessing(message);
-    // });
+    // checkLatestSelfChatMessage();
+    waClient.onMessage(async (message: Message) => {
+        messageProccessing(message);
+    });
 }
 
 create(launchConfig).then((client: Client) => {
