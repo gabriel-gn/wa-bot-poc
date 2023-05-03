@@ -34,6 +34,10 @@ tmp/
 .vercel
 **COVID_HELPER**
 
+#file_extensions
+*.pdf
+*.html
+
 # managed by open-wa
 **.data.json
 **.node-persist**

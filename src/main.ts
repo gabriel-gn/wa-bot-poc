@@ -25,8 +25,8 @@ const launchConfig: ConfigObject = {
 
 let currentMessageId: any;
 
-function checkLatestSelfChatMessage(): void {
-    setInterval(() => {
+function checkLatestSelfChatMessage(enabled: boolean = true, once: boolean = false): void {
+    const execution = () => {
         const lastMsgObs$ = getChatMessage(waClient, `${config.botPhoneNumber}@c.us` as ChatId, 0);
         // const lastMsgObs$ = from(waClient.getMyLastMessage()) as Observable<Message>;
         lastMsgObs$.subscribe((message: Message) => {
@@ -37,7 +37,17 @@ function checkLatestSelfChatMessage(): void {
             messageProccessing(message);
             // }
         });
-    }, 7500);
+    }
+
+    if (enabled === false) {
+        return;
+    } else if (once) {
+        execution();
+    } else {
+        setInterval(() => {
+            execution();
+        }, 7500);
+    }
 }
 
 function messageProccessing(message: Message) {
@@ -50,9 +60,9 @@ function messageProccessing(message: Message) {
 
         processors.forEach(p => {
             // caso a mensagem com url não possua o trecho "textIncludes", a url não é processada por esse processador
-            if (!!(p?.textIncludes && lowerCaseText.includes(p.textIncludes) === true) === false) {
-                return;
-            }
+            // if (!!(p?.textIncludes && lowerCaseText.includes(p.textIncludes) === true) === false) {
+            //     return;
+            // }
 
             urlsInString.forEach((url: string) => {
                 if (url.includes(`${p?.urlIncludes}`)) {
@@ -73,7 +83,7 @@ function messageProccessing(message: Message) {
 }
 
 function start() {
-    // checkLatestSelfChatMessage();
+    checkLatestSelfChatMessage(true, true);
     waClient.onMessage(async (message: Message) => {
         messageProccessing(message);
     });

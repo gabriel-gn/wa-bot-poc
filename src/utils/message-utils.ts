@@ -38,7 +38,12 @@ export function getChatMessage(waClient: Client, chatId: ChatId, messageIndex: n
                 );
         }),
         map(chatMessages => {
-            const messageToGet = _.reverse(chatMessages)[messageIndex];
+            let messageToGet;
+            try {
+                messageToGet = _.reverse(chatMessages)[messageIndex];
+            } catch (e) {
+                console.error('Lista de mensagens vazia!')
+            }
             return messageToGet;
         }),
     ) as unknown as Observable<Message>;
