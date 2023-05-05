@@ -1,13 +1,13 @@
 import {Observable} from "rxjs";
 import {Message} from "@open-wa/wa-automate/dist/api/model/message";
-import {messageToFig} from "./message-processors/sticker-generator";
+import {messageToSticker} from "./message-processors/sticker-generator";
 import {passeiDiretoUrlDownload} from "./message-processors/passei-direto-downloader";
 import {Client} from "@open-wa/wa-automate";
 import {helpMenu} from "./message-processors/help-menu";
 
 export const msgProcessors: {
     msgFunc: (...args: any[]) => Observable<any>,
-    description: string,
+    description?: string, // caso não esteja presente, não é exibido no menu de ajuda
     textIncludes?: string,
     textEquals?: string,
     urlIncludes?: string,
@@ -19,7 +19,7 @@ export const msgProcessors: {
     },
     {
         textEquals: 'fig',
-        msgFunc: (waClient: Client, m: Message) => messageToFig(waClient, m),
+        msgFunc: (waClient: Client, m: Message) => messageToSticker(waClient, m),
         description: '🥸 Figurinhas: Envie ou Responda uma imagem ou gif com o texto "fig", e ela será transformada em figurinha'
     },
     {

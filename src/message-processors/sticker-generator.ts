@@ -3,7 +3,7 @@ import {concatMap, forkJoin, from, Observable, of, tap} from "rxjs";
 import {Client, decryptMedia, MessageTypes} from "@open-wa/wa-automate";
 import {StickerMetadata} from "@open-wa/wa-automate/dist/api/model/media";
 
-export function messageToFig(waClient: Client, message: Message, enableQuotedMessage: boolean = true): Observable<any> | Observable<never> {
+export function messageToSticker(waClient: Client, message: Message, enableQuotedMessage: boolean = true): Observable<any> | Observable<never> {
     if (enableQuotedMessage && message?.hasOwnProperty('quotedMsg')) {
         message = message.quotedMsg as Message;
     }

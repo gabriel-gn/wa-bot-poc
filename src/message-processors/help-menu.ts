@@ -10,7 +10,9 @@ export function helpMenu(waClient: Client, message: Message, enableQuotedMessage
 
     let helpText = `Lista de utilitários: \n\n`;
     msgProcessors.forEach(p => {
-        helpText += `${p.description} \n`
+        if (p?.description) {
+            helpText += `${p.description} \n`
+        }
     })
     return from(waClient.reply(message.chatId, `${helpText}`, message.id, true));
 }
