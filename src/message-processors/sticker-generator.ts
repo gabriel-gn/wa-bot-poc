@@ -3,9 +3,8 @@ import {concatMap, delay, forkJoin, from, map, Observable, of, tap} from "rxjs";
 import {Client, decryptMedia, MessageTypes} from "@open-wa/wa-automate";
 import {StickerMetadata} from "@open-wa/wa-automate/dist/api/model/media";
 const Jimp = require("jimp");
-import {join} from "lodash";
+import {join} from "path";
 import {Font} from "@jimp/plugin-print";
-import * as path from "path";
 
 export function messageToSticker(waClient: Client, message: Message, enableQuotedMessage: boolean = true): Observable<any> | Observable<never> {
     if (enableQuotedMessage && message?.hasOwnProperty('quotedMsg')) {
@@ -73,30 +72,30 @@ export function messageToStickerWithText(waClient: Client, message: Message, ena
             );
     }
 
-    console.log('iniciando figurinha com texto');
-    return (from(Jimp.loadFont(path.join(__dirname, '../assets/fonts/font.fnt'))) as Observable<Font>).pipe(
-        concatMap((font: Font) => {
-            // @ts-ignore
-            return from(Jimp.read(path.join(__dirname, '../assets/images/test.png'))).pipe(map(
+    return (forkJoin({
+        font: from(Jimp.loadFont(join(__dirname, '../assets/fonts/font.fnt'))) as Observable<Font>,
+        // @ts-ignore
+        img: from(decryptMedia(message))
+    })).pipe(
+        concatMap(obj => {
+            return from(Jimp.read(obj['img'])).pipe(map(
                 (image: any) => {
                     const maxWidth = 250;
                     const text = "shaushauhshusha"; // text to be printed
-                    const color = 0xFFFFFFFF; // color of the text
                     return image
                         .resize(maxWidth, Jimp.AUTO)
                         // print the text with a smaller font size and a lighter color on top of the first print
                         .print(
-                            font,
+                            obj['font'],
                             0, // x
-                            image.getHeight() - Jimp.measureTextHeight(font, text, maxWidth), // y
+                            image.getHeight() - Jimp.measureTextHeight(obj['font'], text, maxWidth), // y
                             {
                                 text,
                                 alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER
                             },
                             maxWidth
                         )
-                        .color([{ apply: 'xor', params: [color] }])
-                        .write(path.join(__dirname, '../assets/images/test2.png'));
+                        .write(join(__dirname, `../assets/images/test2.jpeg`));
                 }
             ))
         })
