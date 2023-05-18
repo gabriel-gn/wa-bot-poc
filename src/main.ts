@@ -71,7 +71,8 @@ function messageProccessing(message: Message) {
             })
         })
     } else if (message?.text) {
-        const processors = msgProcessors.filter(p => p.hasOwnProperty('textEquals'));
+        const textProcessingProperties = ['textEquals', 'textIncludes'];
+        const processors = msgProcessors.filter(p => Object.keys(p).some(k => textProcessingProperties.includes(k)));
         processors.forEach(p => {
             if (p?.textEquals && lowerCaseText === p.textEquals) {
                 proccessMessage(waClient, message, p.msgFunc);

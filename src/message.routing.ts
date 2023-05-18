@@ -1,6 +1,6 @@
 import {Observable} from "rxjs";
 import {Message} from "@open-wa/wa-automate/dist/api/model/message";
-import {messageToSticker} from "./message-processors/sticker-generator";
+import {messageToSticker, messageToStickerWithText} from "./message-processors/sticker-generator";
 import {passeiDiretoUrlDownload} from "./message-processors/passei-direto-downloader";
 import {Client} from "@open-wa/wa-automate";
 import {helpMenu} from "./message-processors/help-menu";
@@ -16,6 +16,10 @@ export const msgProcessors: {
         textEquals: 'ajuda!',
         msgFunc: (waClient: Client, m: Message) => helpMenu(waClient, m),
         description: '⁉️ Ajuda: Envie "ajuda!" para exibir este menu'
+    },
+    {
+        textIncludes: 'fig ',
+        msgFunc: (waClient: Client, m: Message) => messageToStickerWithText(waClient, m),
     },
     {
         textEquals: 'fig',

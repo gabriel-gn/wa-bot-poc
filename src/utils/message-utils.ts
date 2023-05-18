@@ -20,7 +20,7 @@ export function proccessMessage(
                 concatMap(() => from(waClient.react(message?.id, "🔄"))),
                 concatMap(() => messageFunction(waClient, message, ...aditionalArgs)),
                 concatMap(() => from(waClient.react(message?.id, "✅"))),
-                catchError(error => { return from(waClient.react(message.id, "❌")); }),
+                catchError(error => { console.log(error); return from(waClient.react(message.id, "❌")); }),
             )
         }),
     ).subscribe();
