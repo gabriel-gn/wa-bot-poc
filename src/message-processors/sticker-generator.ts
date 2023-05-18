@@ -58,6 +58,9 @@ export function messageToSticker(waClient: Client, message: Message, enableQuote
 }
 
 export function messageToStickerWithText(waClient: Client, message: Message, enableQuotedMessage: boolean = true): Observable<any> | Observable<never> {
+    let stickerText = `${message?.text}`;
+    stickerText = stickerText.substring(stickerText.indexOf('fig ') + 'fig '.length); // text to be printed
+
     if (enableQuotedMessage && message?.hasOwnProperty('quotedMsg')) {
         message = message.quotedMsg as Message;
     }
@@ -78,26 +81,35 @@ export function messageToStickerWithText(waClient: Client, message: Message, ena
         img: from(decryptMedia(message))
     })).pipe(
         concatMap(obj => {
-            return from(Jimp.read(obj['img'])).pipe(map(
+            return from(Jimp.read(obj['img'])).pipe(concatMap(
                 (image: any) => {
                     const maxWidth = 250;
-                    const text = "shaushauhshusha"; // text to be printed
-                    return image
+                    return from(image
                         .resize(maxWidth, Jimp.AUTO)
                         // print the text with a smaller font size and a lighter color on top of the first print
                         .print(
                             obj['font'],
                             0, // x
-                            image.getHeight() - Jimp.measureTextHeight(obj['font'], text, maxWidth), // y
+                            image.getHeight() - Jimp.measureTextHeight(obj['font'], stickerText, maxWidth), // y
                             {
-                                text,
+                                text: stickerText,
                                 alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER
                             },
                             maxWidth
                         )
-                        .write(join(__dirname, `../assets/images/test2.jpeg`));
+                        .getBase64Async(message.mimetype))
                 }
             ))
+        }),
+        concatMap(b64 => {
+            const stickerMetadata: StickerMetadata = {
+                // author: `${message.from.substring(0, message.from.indexOf('@'))}`,
+                author: `GGN`,
+                pack: `GGN Sticker Bot`,
+                removebg: false,
+            };
+            const chatToSend = message.chatId;
+            return from(waClient.sendImageAsSticker(chatToSend, b64 as Buffer, stickerMetadata))
         })
     )
 }

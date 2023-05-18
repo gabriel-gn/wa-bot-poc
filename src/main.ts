@@ -32,7 +32,6 @@ function checkLatestSelfChatMessage(enabled: boolean = true, once: boolean = fal
         lastMsgObs$.subscribe((message: Message) => {
             // if (message?.mId && message?.mId !== currentMessageId) {
             // console.log('Result:', message);
-            console.log('Message:', message?.mId, message?.text);
             currentMessageId = message?.mId;
             messageProccessing(message);
             // }
@@ -54,6 +53,8 @@ function messageProccessing(message: Message) {
     const urlsInString = findAllUrlsInString(`${message?.text}`);
     const messageText = `${message?.text}`;
     const lowerCaseText = messageText.toLowerCase();
+
+    console.log('Message:', message?.mId, message?.text);
 
     if (urlsInString.length > 0) {
         const processors = msgProcessors.filter(p => p.hasOwnProperty('urlIncludes'));
