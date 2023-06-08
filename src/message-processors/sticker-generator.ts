@@ -35,7 +35,7 @@ export function messageToSticker(waClient: Client, message: Message, enableQuote
                     // @ts-ignore
                     const mediaData = await decryptMedia(message);
                     const videoBase64 = `data:${message.mimetype};base64,${mediaData.toString('base64')}`;
-                    return from(waClient.sendMp4AsSticker(chatToSend, videoBase64, {}, stickerMetadata));
+                    return from(waClient.sendMp4AsSticker(chatToSend, videoBase64, {fps: 60}, stickerMetadata));
                 } else if (message.type === MessageTypes.IMAGE) {
                     // @ts-ignore
                     const mediaData = await decryptMedia(message);
