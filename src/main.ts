@@ -91,6 +91,9 @@ function start() {
     });
 }
 
+if (!!(process.env.PHONE_NUMBER || '') === false) {
+    throw 'ADICIONE UM NÚMERO DE TELEFONE NAS ENVS PARA UTILIZAR O BOT'
+}
 create(launchConfig).then((client: Client) => {
     waClient = client;
     start();

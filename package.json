@@ -5,7 +5,7 @@
   "dependencies": {
     "@jimp/plugin-print": "^0.22.7",
     "@jimp/types": "^0.22.7",
-    "@open-wa/wa-automate": "^4.65.0",
+    "@open-wa/wa-automate": "^4.66.3",
     "@types/lodash": "^4.14.191",
     "@types/shelljs": "^0.8.12",
     "dotenv": "^16.0.3",
